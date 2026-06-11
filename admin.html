@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>[관리자] AXer Incubator 만족도 조사 대시보드</title>
+  
+  <meta name="description" content="롯데백화점 AXer Incubator 만족도 조사 결과 관리 및 분석 대시보드입니다.">
+  <meta name="theme-color" content="#0a0b0d">
+  
+  <!-- stylesheets -->
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/admin.css">
+  
+  <!-- Lucide Icons & Chart.js & SheetJS(XLSX) CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+  <!-- Tech Grid Decorator -->
+  <div class="tech-bg"></div>
+
+  <!-- Admin Login Overlay -->
+  <div class="login-overlay active" id="loginOverlay">
+    <div class="login-card glass">
+      <div class="tech-badge">ADMIN SECURITY</div>
+      <h2 class="login-title">AXer Incubator 대시보드</h2>
+      <p class="login-desc">설문 조사 데이터 접근을 위해 관리자 인증번호를 입력해 주세요.</p>
+      
+      <div class="login-form">
+        <div class="input-wrapper">
+          <input type="password" id="inputPassword" class="tech-input" placeholder="비밀번호 입력" autofocus autocomplete="current-password">
+          <div class="focus-line"></div>
+        </div>
+        <button class="btn btn-primary btn-large btn-login" onclick="verifyAdmin()">
+          인증하기 <i data-lucide="shield-check"></i>
+        </button>
+        <p class="error-message" id="loginErrorMsg">비밀번호가 올바르지 않습니다.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Dashboard Container -->
+  <div class="admin-container" id="adminContainer">
+    
+    <!-- Top Dashboard Header -->
+    <header class="admin-header">
+      <div class="header-left">
+        <a href="index.html" class="back-link"><i data-lucide="chevron-left"></i> 설문지로 이동</a>
+        <h1>AXer Incubator <span class="gradient-text">데이터 분석</span></h1>
+      </div>
+      <div class="header-right">
+        <button class="btn btn-secondary btn-refresh" onclick="loadDashboardData()">
+          <i data-lucide="refresh-cw"></i> 새로고침
+        </button>
+        <button class="btn btn-primary btn-download" onclick="downloadExcel()">
+          <i data-lucide="file-spreadsheet"></i> 엑셀 다운로드
+        </button>
+      </div>
+    </header>
+
+    <!-- 대화형 대형 네비게이션 탭 -->
+    <div class="admin-nav-tabs">
+      <button class="nav-tab-btn active" id="navTabDashboard" onclick="switchNavTab('dashboard')">
+        <i data-lucide="bar-chart-3"></i> 대시보드 분석
+      </button>
+      <button class="nav-tab-btn" id="navTabTable" onclick="switchNavTab('table')">
+        <i data-lucide="table"></i> 응답 세부내역
+      </button>
+    </div>
+
+    <!-- 탭 콘텐츠 1: 대시보드 분석 (Metrics, Charts, Feedback) -->
+    <div id="tabContentDashboard" class="tab-content active-content">
+      <!-- Key Metrics Cards -->
+      <section class="metrics-grid">
+        <div class="metric-card glass">
+          <div class="metric-icon blue"><i data-lucide="users"></i></div>
+          <div class="metric-info">
+            <span class="metric-label">총 설문 응답자 수</span>
+            <span class="metric-value" id="metricTotalResponses">0</span>
+          </div>
+        </div>
+        
+        <div class="metric-card glass">
+          <div class="metric-icon purple"><i data-lucide="star"></i></div>
+          <div class="metric-info">
+            <span class="metric-label">교육 전반 만족도</span>
+            <span class="metric-value" id="metricAvgSatisfaction">0.0 <span class="max-val">/ 5.0</span></span>
+          </div>
+        </div>
+        
+        <div class="metric-card glass">
+          <div class="metric-icon green"><i data-lucide="thumbs-up"></i></div>
+          <div class="metric-info">
+            <span class="metric-label">회사 동료 추천 지수</span>
+            <span class="metric-value" id="metricNPS">0.0 <span class="max-val">/ 5.0</span></span>
+          </div>
+        </div>
+        
+        <div class="metric-card glass">
+          <div class="metric-icon orange"><i data-lucide="book-open"></i></div>
+          <div class="metric-info">
+            <span class="metric-label">강사 전문성 만족도</span>
+            <span class="metric-value" id="metricAvgExpertise">0.0 <span class="max-val">/ 5.0</span></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Charts Area -->
+      <section class="charts-grid">
+        <div class="chart-card glass">
+          <h3 class="chart-title">5점 척도 핵심 평가 지표 평균</h3>
+          <div class="chart-body">
+            <canvas id="chartMetricsAvg"></canvas>
+          </div>
+        </div>
+        
+        <div class="chart-card glass">
+          <h3 class="chart-title">교육 일자별 응답 분포</h3>
+          <div class="chart-body">
+            <canvas id="chartEduDates"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card glass">
+          <h3 class="chart-title">6. 가장 마음에 들었던 점 빈도</h3>
+          <div class="chart-body">
+            <canvas id="chartLikedFeatures"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card glass">
+          <h3 class="chart-title">7. 개선이 필요한 항목 빈도</h3>
+          <div class="chart-body">
+            <canvas id="chartImprovedFeatures"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- Qualitative Feedback Tab -->
+      <section class="feedback-section glass">
+        <h3 class="feedback-title"><i data-lucide="message-square"></i> 주관식 피드백 및 의견 모음</h3>
+        
+        <div class="feedback-tabs">
+          <button class="tab-btn active" onclick="switchFeedbackTab('q8')">8. 현업 활용 필요 요소</button>
+          <button class="tab-btn" onclick="switchFeedbackTab('q9')">9. 교육 소감 및 피드백</button>
+          <button class="tab-btn" onclick="switchFeedbackTab('etc')">기타 의견 (6번/7번 주관식)</button>
+        </div>
+
+        <div class="feedback-container" id="feedbackList">
+          <p class="no-feedback">조회된 피드백이 없습니다.</p>
+        </div>
+      </section>
+    </div>
+
+    <!-- 탭 콘텐츠 2: 응답 세부내역 표 (Table, 주관식 컬럼 추가) -->
+    <div id="tabContentTable" class="tab-content" style="display: none;">
+      <section class="table-section glass">
+        <div class="table-header-row">
+          <h3 class="table-title"><i data-lucide="table"></i> 설문 응답 데이터 원본 표</h3>
+          <div class="table-actions-group">
+            <button class="btn btn-secondary" id="btnToggleSubjective" onclick="toggleSubjectiveView()">
+              <i data-lucide="maximize-2"></i> 주관식 전체 보기
+            </button>
+            <button class="btn btn-secondary btn-delete-selected" id="btnDeleteSelected" onclick="openBatchDeleteModal()" disabled>
+              <i data-lucide="trash-2"></i> 선택 삭제 (<span id="selectedCount">0</span>)
+            </button>
+          </div>
+        </div>
+        
+        <div class="table-responsive">
+          <table class="survey-table" id="surveyTable">
+            <thead>
+              <tr>
+                <th width="40"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)"></th>
+                <th class="sortable-header" onclick="handleSort('name')">성함 <span class="sort-icon" id="sort-name"></span></th>
+                <th class="sortable-header" onclick="handleSort('eduDate')">교육 일자 <span class="sort-icon" id="sort-eduDate"></span></th>
+                <th class="sortable-header" onclick="handleSort('q1')">Q1 <span class="sort-icon" id="sort-q1"></span></th>
+                <th class="sortable-header" onclick="handleSort('q2')">Q2 <span class="sort-icon" id="sort-q2"></span></th>
+                <th class="sortable-header" onclick="handleSort('q3')">Q3 <span class="sort-icon" id="sort-q3"></span></th>
+                <th class="sortable-header" onclick="handleSort('q4')">Q4 <span class="sort-icon" id="sort-q4"></span></th>
+                <th class="sortable-header" onclick="handleSort('q5')">Q5 <span class="sort-icon" id="sort-q5"></span></th>
+                <!-- 주관식 컬럼 추가 -->
+                <th class="sortable-header" onclick="handleSort('q6_etc')">Q6기타 <span class="sort-icon" id="sort-q6_etc"></span></th>
+                <th class="sortable-header" onclick="handleSort('q7_etc')">Q7기타 <span class="sort-icon" id="sort-q7_etc"></span></th>
+                <th class="sortable-header" onclick="handleSort('q8')">Q8현업활용 <span class="sort-icon" id="sort-q8"></span></th>
+                <th class="sortable-header" onclick="handleSort('q9')">Q9교육소감 <span class="sort-icon" id="sort-q9"></span></th>
+                <th class="sortable-header" onclick="handleSort('submittedAt')">제출 시간 <span class="sort-icon" id="sort-submittedAt"></span></th>
+                <th width="60">관리</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              <!-- JS로 동적 로드됨 -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+  </div>
+
+  <!-- 데이터 삭제 확인 팝업 모달 -->
+  <div class="modal-overlay" id="deleteModal">
+    <div class="modal-card glass">
+      <div class="modal-header">
+        <h3><i data-lucide="alert-triangle" class="warning-icon"></i> 데이터 삭제 경고</h3>
+      </div>
+      <div class="modal-body">
+        <p id="deleteModalMsg">정말 선택한 데이터를 삭제하시겠습니까?</p>
+        <p class="modal-submsg">이 작업은 복구가 불가능하며, 데이터베이스에서 즉시 삭제됩니다.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeDeleteModal()">취소</button>
+        <button class="btn btn-danger" id="btnConfirmDelete" onclick="confirmDelete()">삭제</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase Web SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  
+  <!-- Project Scripts -->
+  <script src="js/firebase-config.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
